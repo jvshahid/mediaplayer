@@ -18,6 +18,7 @@ android {
         }
     }
 
+    // enable the good old apache httpclient and friends
     useLibrary 'org.apache.http.legacy'
 }
 
