@@ -79,3 +79,8 @@ The default make target will do the following:
 1. build `media-jni` (a light jni layer that utilizes ffmpeg)
 1. package everything in a `aar` file
 
+#### Note about LICENSE
+
+This code is licensed under `MIT` but make use of `ffmpeg` which is `LGPL`
+licensed. **note** `MediaPlayer` doesn't turn on `GPL` features of `ffmpeg`, so
+it should be safe to use this library in commercial products.
