@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="jvshahid.github.com.mediaplayer">
+    package="com.github.jvshahid.mediaplayer">
 
     <application
         android:allowBackup="true"
