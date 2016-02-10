@@ -6,3 +6,8 @@
 .DS_Store
 /build
 /captures
+
+libs/
+mediaplayer/src/main/jniLibs/
+obj/
+tmp/

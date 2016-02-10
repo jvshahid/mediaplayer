@@ -5,7 +5,7 @@ DEBUG=0
 android=$(SDK)/tools/android
 ffmpeg_parent=deps/ffmpeg
 ffmpeg=$(ffmpeg_parent)/android
-libs=mediaplayer/src/main/jniLibs/
+libs=libs/armeabi
 ifeq ($(DEBUG),1)
 class_dir=mediaplayer/build/intermediates/classes/build
 else
@@ -36,6 +36,7 @@ properties: local.properties
 # Create the android toolchain under /tmp/my-toolchain
 #
 uname_s := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+toolchain_ver := 4.9
 $(toolchain):
 	${ndk}
 ifeq ($(uname_s),Darwin)
@@ -43,7 +44,7 @@ ifeq ($(uname_s),Darwin)
 else
 	$(eval $@_toolchainsys := --system=linux-x86_64)
 endif
-	bash $(NDK)/build/tools/make-standalone-toolchain.sh $($@_toolchainsys) --toolchain=arm-linux-androideabi-4.9 --platform=android-8 --install-dir=$@
+	bash $(NDK)/build/tools/make-standalone-toolchain.sh $($@_toolchainsys) --toolchain=arm-linux-androideabi-$(toolchain_ver) --platform=android-8 --install-dir=$@
 
 #
 # Create the ffmpeg.so library
@@ -68,7 +69,7 @@ $(ffmpeg)/lib/libffmpeg.so: $(ffmpeg_parent)/config.h
                $(ffmpeg)/lib/libswscale.a \
                $(ffmpeg)/lib/libavfilter.a \
                $(ffmpeg)/lib/libavutil.a \
-    --no-whole-archive $(toolchain)/lib/gcc/arm-linux-androideabi/4.6/libgcc.a \
+    --no-whole-archive $(toolchain)/lib/gcc/arm-linux-androideabi/$(toolchain_ver)/libgcc.a \
     -L$(toolchain)/sysroot/usr/lib -lc -lm -lz -ldl -llog
 
 #
@@ -76,12 +77,15 @@ $(ffmpeg)/lib/libffmpeg.so: $(ffmpeg_parent)/config.h
 #
 prepackage: setup
 ifeq ($(DEBUG), 1)
-	./gradlew assembleDebug
+	./gradlew compileDebugSources
 else
-	./gradlew assembleRelease
+	./gradlew compileReleaseSources
 endif
 
-$(libs)/libmedia-jni.so: prepackage $(ffmpeg)/lib/libffmpeg.so jni/media-decoder.c jni/media-decoder.h
+$(libs)/libmedia-jni.so: prepackage \
+				$(ffmpeg)/lib/libffmpeg.so \
+				jni/media-decoder.c \
+				jni/media-decoder.h
 	${ndk}
 	javah -o jni/media-decoder.h -classpath $(class_dir) $(class_name)
 ifeq ($(DEBUG), 1)
@@ -90,13 +94,26 @@ else
 	$(NDK)/ndk-build
 endif
 
-libs: setup $(libs)/libmedia-jni.so
+mediaplayer/src/main/jniLibs/armeabi:
+	mkdir -p mediaplayer/src/main/jniLibs/armeabi
+
+mediaplayer/src/main/jniLibs/armeabi/libmedia-jni.so: \
+				$(libs)/libmedia-jni.so
+	cp $? $@
+
+mediaplayer/src/main/jniLibs/armeabi/libffmpeg.so: \
+				$(ffmpeg)/lib/libffmpeg.so
+	cp $? $@
+
+libs: setup \
+				mediaplayer/src/main/jniLibs/armeabi/libffmpeg.so \
+				mediaplayer/src/main/jniLibs/armeabi/libmedia-jni.so
 
 package: libs
 ifeq ($(DEBUG), 1)
-	ant debug
+	./gradlew assembleDebug
 else
-	ant release
+	./gradlew assembleRelease
 endif
 
 install: libs
