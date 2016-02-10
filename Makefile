@@ -2,20 +2,21 @@
 # NDK=~/bin/android-ndk-r8c
 
 DEBUG=0
-NOGOUM=0
 android=$(SDK)/tools/android
-facebook=deps/facebook/facebook
-slidingmenu=deps/SlidingMenu/library
 ffmpeg_parent=deps/ffmpeg
 ffmpeg=$(ffmpeg_parent)/android
-libs=libs/armeabi
-class_dir=bin/classes
-class=org/extremesolution/nilefm/media/AACPlayer.class
+libs=mediaplayer/src/main/jniLibs/
+ifeq ($(DEBUG),1)
+class_dir=mediaplayer/build/intermediates/classes/build
+else
+class_dir=mediaplayer/build/intermediates/classes/release
+endif
+class=com/github/jvshahid/mediaplayer/AACPlayer.class
 class_name=$(subst .class,,$(subst /,.,$(class)))
 toolchain=/tmp/toolchain
 
 all: package
-.phony: setup sdk all install prepackage package properties resources
+.phony: setup sdk all install prepackage package properties
 
 #
 # Create the local.properites file in all this project and all its dependencies
@@ -23,59 +24,13 @@ all: package
 sdk=$(if ${SDK},,$(error You must define SDK, please provide make with the location of the SDK, e.g. make SDK='path to the sdk'))
 ndk=$(if ${NDK},,$(error You must define NDK, please provide make with the location of the NDK, e.g. make NDK='path to the ndk'))
 
-setup: resources properties
-
-resources:
-ifeq ($(NOGOUM), 1)
-	$(eval $@_appname := nogoumfm)
-	$(eval $@_prefix  := ${PWD}/nogoumfm-specific)
-else
-	$(eval $@_appname := nilefm)
-	$(eval $@_prefix  := ${PWD}/nilefm-specific)
-endif
-# change the name of the app in the build.xml file to appname
-	$(android) update project -p $$(dirname $@) -n $($@_appname)
-# replace the token {{appname}} with the name of the app in all xml/java files
-	ant -Dappname=$($@_appname) replace
-
-# create symlinks to the app specific resources in the res/ directory
-	ln -f -s $($@_prefix)/res/values/strings-specific.xml res/values/strings-specific.xml
-	ln -f -s $($@_prefix)/res/values/analytics.xml res/values/analytics.xml
-	for resolution in hdpi mdpi ldpi; do \
-		for name in about_us_menu_bar.png ic_launcher.png menu_bar_logo.png splash_background.png splash_logo.png channel_logo.png; do \
-      ln -f -s $($@_prefix)/res/drawable-$$resolution/$$name res/drawable-$$resolution/$$name; \
-    done; \
-		ln -f -s $($@_prefix)/res/drawable-$$resolution/presenter_page_image_holder.png res/drawable-$$resolution/presenter_page_image_holder.png; \
-  done
-	ln -f -s $($@_prefix)/res/drawable-xhdpi/presenter_page_image_holder.png res/drawable-xhdpi/presenter_page_image_holder.png
-	ln -f -s $($@_prefix)/res/drawable-xhdpi/ic_launcher.png res/drawable-xhdpi/ic_launcher.png
-	ln -f -s $($@_prefix)/res/layout/header.xml res/layout/header.xml
-	ln -f -s $($@_prefix)/res/layout/about_us_header.xml res/layout/about_us_header.xml
-	ln -f -s $($@_prefix)/res/layout/menu_bar.xml res/layout/menu_bar.xml
-	ln -f -s $($@_prefix)/res/layout/presenter_page_layout.xml res/layout/presenter_page_layout.xml
-	ln -f -s $($@_prefix)/res/layout/show_page_layout.xml res/layout/show_page_layout.xml
-	ln -f -s $($@_prefix)/res/layout/live_streaming_layout.xml res/layout/live_streaming_layout.xml
-	ln -f -s $($@_prefix)/res/layout/schedule_row_layout.xml res/layout/schedule_row_layout.xml
-	ln -f -s $($@_prefix)/res/layout/facebook_webview.xml res/layout/facebook_webview.xml
-	ln -f -s $($@_prefix)/res/layout/youtube_row_layout.xml res/layout/youtube_row_layout.xml
-
-$(facebook)/local.properties:
-	${sdk}
-	sed 's/ -Werror//g' $(facebook)/ant.properties > /tmp/facebook.ant.properties
-	cp /tmp/facebook.ant.properties $(facebook)/ant.properties
-	$(android) update project -p $$(dirname $@) -t 'android-15'
-
-$(slidingmenu)/local.properties:
-	${sdk}
-	sed 's/android.library.reference.1=..\/ABS//' $(slidingmenu)/project.properties > /tmp/sliding.ant.properties
-	cp /tmp/sliding.ant.properties $(slidingmenu)/project.properties
-	$(android) update project -p $$(dirname $@) -t 'Google Inc.:Google APIs:15'
+setup: properties
 
 local.properties:
 	${sdk}
 	$(android) update project -p $$(dirname $@)
 
-properties: $(facebook)/local.properties $(slidingmenu)/local.properties local.properties
+properties: local.properties
 
 #
 # Create the android toolchain under /tmp/my-toolchain
@@ -88,7 +43,7 @@ ifeq ($(uname_s),Darwin)
 else
 	$(eval $@_toolchainsys := --system=linux-x86_64)
 endif
-	$(NDK)/build/tools/make-standalone-toolchain.sh $($@_toolchainsys) --platform=android-8 --install-dir=$@
+	bash $(NDK)/build/tools/make-standalone-toolchain.sh $($@_toolchainsys) --toolchain=arm-linux-androideabi-4.9 --platform=android-8 --install-dir=$@
 
 #
 # Create the ffmpeg.so library
@@ -121,9 +76,9 @@ $(ffmpeg)/lib/libffmpeg.so: $(ffmpeg_parent)/config.h
 #
 prepackage: setup
 ifeq ($(DEBUG), 1)
-	ant debug
+	./gradlew assembleDebug
 else
-	ant release
+	./gradlew assembleRelease
 endif
 
 $(libs)/libmedia-jni.so: prepackage $(ffmpeg)/lib/libffmpeg.so jni/media-decoder.c jni/media-decoder.h
