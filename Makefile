@@ -132,10 +132,9 @@ else
 endif
 
 clean:
-	ant clean
-	ant -Dappname=$($@_appname) unreplace
+	./gradlew clean
 
-distclean:
+distclean: clean
 	git checkout .
 	git clean -dfx
 	for i in deps/*; do cd $$i; git checkout .; git clean -dfx; cd -; done
