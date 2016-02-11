@@ -7,7 +7,7 @@ ffmpeg_parent=deps/ffmpeg
 ffmpeg=$(ffmpeg_parent)/android
 libs=libs/armeabi
 ifeq ($(DEBUG),1)
-class_dir=mediaplayer/build/intermediates/classes/build
+class_dir=mediaplayer/build/intermediates/classes/debug
 else
 class_dir=mediaplayer/build/intermediates/classes/release
 endif
@@ -16,21 +16,13 @@ class_name=$(subst .class,,$(subst /,.,$(class)))
 toolchain=/tmp/toolchain
 
 all: package
-.phony: setup sdk all install prepackage package properties
+.phony: sdk all prepackage package
 
 #
 # Create the local.properites file in all this project and all its dependencies
 #
 sdk=$(if ${SDK},,$(error You must define SDK, please provide make with the location of the SDK, e.g. make SDK='path to the sdk'))
 ndk=$(if ${NDK},,$(error You must define NDK, please provide make with the location of the NDK, e.g. make NDK='path to the ndk'))
-
-setup: properties
-
-local.properties:
-	${sdk}
-	$(android) update project -p $$(dirname $@)
-
-properties: local.properties
 
 #
 # Create the android toolchain under /tmp/my-toolchain
@@ -50,6 +42,7 @@ endif
 # Create the ffmpeg.so library
 #
 export PATH := $(toolchain)/arm-linux-androideabi/bin:$(PATH)
+export ANDROID_HOME := $(SDK)
 $(ffmpeg_parent)/config.h: $(toolchain)
 	CALLED_FROM_MAKE=1 DEBUG=$(DEBUG) ./build.sh
 
@@ -75,7 +68,7 @@ $(ffmpeg)/lib/libffmpeg.so: $(ffmpeg_parent)/config.h
 #
 # Create the native part of our application
 #
-prepackage: setup
+prepackage:
 ifeq ($(DEBUG), 1)
 	./gradlew compileDebugSources
 else
@@ -98,15 +91,16 @@ mediaplayer/src/main/jniLibs/armeabi:
 	mkdir -p mediaplayer/src/main/jniLibs/armeabi
 
 mediaplayer/src/main/jniLibs/armeabi/libmedia-jni.so: \
-				$(libs)/libmedia-jni.so
-	cp $? $@
+				$(libs)/libmedia-jni.so \
+				mediaplayer/src/main/jniLibs/armeabi
+	cp $< $@
 
 mediaplayer/src/main/jniLibs/armeabi/libffmpeg.so: \
-				$(ffmpeg)/lib/libffmpeg.so
-	cp $? $@
+				$(ffmpeg)/lib/libffmpeg.so \
+				mediaplayer/src/main/jniLibs/armeabi
+	cp $< $@
 
-libs: setup \
-				mediaplayer/src/main/jniLibs/armeabi/libffmpeg.so \
+libs: mediaplayer/src/main/jniLibs/armeabi/libffmpeg.so \
 				mediaplayer/src/main/jniLibs/armeabi/libmedia-jni.so
 
 package: libs

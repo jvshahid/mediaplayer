@@ -79,6 +79,13 @@ The default make target will do the following:
 1. build `media-jni` (a light jni layer that utilizes ffmpeg)
 1. package everything in a `aar` file
 
+For a debug build run
+
+    make distclean && make DEBUG=1
+
+**note** `make distclean` is destructive and will revert all changes in the
+  local repo including the deps folder.
+
 #### Note about LICENSE
 
 This code is licensed under `MIT` but make use of `ffmpeg` which is `LGPL`
