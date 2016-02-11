@@ -8,14 +8,16 @@ and as a consequence in `MediaPlayer`
 
 ##### Download the library
 
+The [Releases page](https://github.com/jvshahid/mediaplayer/releases) should
+have all the released versions of the library. Grab the `.aar` file from the
+latest version.
 
 ##### Add a project module
 
 `New -> New Module -> Import .JAR/.AAR package`
 
 Set the `Subproject name` to `mediaplayer` and set the File name to the path of
-`mediaplayer-release.aar` that you downloaded from the
-[Releases page](https://github.com/jvshahid/mediaplayer/releases)
+`mediaplayer-release.aar` that you downloaded in the previous step
 
 
 ##### Add a the module as a dependency
