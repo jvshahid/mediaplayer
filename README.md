@@ -19,7 +19,6 @@ latest version.
 Set the `Subproject name` to `mediaplayer` and set the File name to the path of
 `mediaplayer-release.aar` that you downloaded in the previous step
 
-
 ##### Add a the module as a dependency
 
 Update the app's `build.gradle` file to have the following line:
@@ -42,7 +41,6 @@ dependencies {
     compile project(':mediaplayer')
 }
 ```
-
 
 ##### Start the player
 
