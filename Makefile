@@ -47,7 +47,7 @@ $(ffmpeg_parent)/config.h: $(toolchain)
 	CALLED_FROM_MAKE=1 DEBUG=$(DEBUG) ./build.sh
 
 $(ffmpeg)/lib/libffmpeg.so: $(ffmpeg_parent)/config.h
-	$(MAKE) -C $(ffmpeg_parent) install
+	$(MAKE) -j4 -C $(ffmpeg_parent) install
 	$(toolchain)/arm-linux-androideabi/bin/ar d $(ffmpeg)/lib/libavcodec.a log2_tab.o
 	$(toolchain)/arm-linux-androideabi/bin/ar d $(ffmpeg)/lib/libavformat.a log2_tab.o
 	$(toolchain)/arm-linux-androideabi/bin/ar d $(ffmpeg)/lib/libswresample.a log2_tab.o
