@@ -205,10 +205,8 @@ public class AACPlayer {
   }
 
   private synchronized void init() throws IOException {
-    if(shouldStop) {
-      return;
-    }
-
+    if(shouldStop) return;
+    
     connect();
     int read = readChunk();
     if(read <= 0) {
@@ -216,21 +214,44 @@ public class AACPlayer {
     }
     AACInfo info = initNative(this, buffer, bufferLength);
     Log.i(getClass().getName(), "Sample rate: " + info.sampleRate
-    + ", channels: " + info.channels);
+        + ", channels: " + info.channels);
     int outputFormat = info.channels == 1 ? AudioFormat.CHANNEL_OUT_MONO
-    : AudioFormat.CHANNEL_OUT_STEREO;
+        : AudioFormat.CHANNEL_OUT_STEREO;
     int encoding = AudioFormat.ENCODING_PCM_16BIT;
+    
+    //increased the buffer size multipying factor from 50 to 200
     bufferSize = AudioTrack.getMinBufferSize(info.sampleRate, outputFormat,
-    encoding) * 50;
+        encoding) * 200;
     Log.i(getClass().getName(), "Using buffer size " + bufferSize);
     track = new AudioTrack(AudioManager.STREAM_MUSIC, info.sampleRate,
     outputFormat, encoding, bufferSize, AudioTrack.MODE_STREAM);
-    if(track.getState() != AudioTrack.STATE_INITIALIZED) {
-      track = null;
-      if(listener != null) {
-        listener.onError(new Exception("Cannot initialize audio track"));
-      }
-      return;
+    
+    //  if the audio track failed to initialize, try a larger buffer size starting by a
+    //  multiplying factors between (45) and (5)  before calling AACPlayerListener.onError
+    //  and nullifying the track
+    if (track.getState() != AudioTrack.STATE_INITIALIZED) {
+      int bufferSizeFactor = 45;
+        while(bufferSizeFactor >= 10){
+            info = initNative(this, buffer, bufferLength);
+            Log.i(getClass().getName(), "Sample rate: " + info.sampleRate
+                + ", channels: " + info.channels);
+            outputFormat = info.channels == 1 ? AudioFormat.CHANNEL_OUT_MONO
+                : AudioFormat.CHANNEL_OUT_STEREO;
+            encoding = AudioFormat.ENCODING_PCM_16BIT;
+            bufferSize = AudioTrack.getMinBufferSize(info.sampleRate, outputFormat,
+                     encoding) * bufferSizeFactor ;
+            track = new AudioTrack(AudioManager.STREAM_MUSIC, info.sampleRate,
+                      outputFormat, encoding, bufferSize, AudioTrack.MODE_STREAM);
+            if (track.getState() != AudioTrack.STATE_INITIALIZED) bufferSizeFactor -= 5;
+            else break;
+        }
+        if( && bufferSizeFactor < 5) {
+          if(listener !=null) {
+            listener.onError(new Exception("Cannot initialize audio track"));
+          }
+          track = null;
+          return;
+        }
     }
     track.play();
   }
