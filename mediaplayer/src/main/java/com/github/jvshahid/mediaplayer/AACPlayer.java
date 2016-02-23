@@ -45,9 +45,7 @@ public class AACPlayer {
   private InputStream responseInputStream;
   private HttpGet request;
 
-  public AACPlayer(String url) {
-    this(url, 5000);
-  }
+  public AACPlayer(String url) { this(url, 5000); }
 
   public AACPlayer(String url, int timeout) {
     this.url = url;
@@ -86,19 +84,14 @@ public class AACPlayer {
     t.start();
   }
 
-  public void setListener(AACPlayerListener listener) {
-    this.listener = listener;
-  }
-
+  public void setListener(AACPlayerListener listener) { this.listener = listener; }
 
   /**
    * Returns true if the track is playing, false otherwise
    *
    * @return
    */
-  public boolean isPlaying() {
-    return !shouldStop;
-  }
+  public boolean isPlaying() { return !shouldStop; }
 
   /**
    * Stop playback
@@ -185,8 +178,7 @@ public class AACPlayer {
     request = new HttpGet(url);
     HttpResponse response = client.execute(request);
     if(response.getStatusLine().getStatusCode() != 200) {
-      throw new IOException("Received "
-      + response.getStatusLine().getStatusCode() + " status code");
+      throw new IOException("Received " + response.getStatusLine().getStatusCode() + " status code");
     }
     responseInputStream = response.getEntity().getContent();
   }
@@ -205,9 +197,8 @@ public class AACPlayer {
   }
 
   private synchronized void init() throws IOException {
-    if(shouldStop) {
+    if(shouldStop)
       return;
-    }
 
     connect();
     int read = readChunk();
@@ -215,34 +206,34 @@ public class AACPlayer {
       throw new IOException("Cannot get data from streaming server at " + url);
     }
     AACInfo info = initNative(this, buffer, bufferLength);
-    Log.i(getClass().getName(), "Sample rate: " + info.sampleRate
-    + ", channels: " + info.channels);
-    int outputFormat = info.channels == 1 ? AudioFormat.CHANNEL_OUT_MONO
-    : AudioFormat.CHANNEL_OUT_STEREO;
-    int encoding = AudioFormat.ENCODING_PCM_16BIT;
-    bufferSize = AudioTrack.getMinBufferSize(info.sampleRate, outputFormat,
-    encoding) * 50;
-    Log.i(getClass().getName(), "Using buffer size " + bufferSize);
-    track = new AudioTrack(AudioManager.STREAM_MUSIC, info.sampleRate,
-    outputFormat, encoding, bufferSize, AudioTrack.MODE_STREAM);
-    if(track.getState() != AudioTrack.STATE_INITIALIZED) {
-      track = null;
-      if(listener != null) {
-        listener.onError(new Exception("Cannot initialize audio track"));
+
+    // trying smaller buffer scalers starting at 200 and ending with 10
+    for(int bufferSizeFactor = 200; bufferSizeFactor >= 10; bufferSizeFactor /= 2) {
+      Log.i(getClass().getName(), "Sample rate: " + info.sampleRate + ", channels: " + info.channels);
+      int outputFormat = info.channels == 1 ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
+      int encoding = AudioFormat.ENCODING_PCM_16BIT;
+      Log.i(getClass().getName(), "Using buffer size " + bufferSize);
+      bufferSize = AudioTrack.getMinBufferSize(info.sampleRate, outputFormat, encoding) * bufferSizeFactor;
+      track = new AudioTrack(AudioManager.STREAM_MUSIC, info.sampleRate, outputFormat, encoding, bufferSize,
+                             AudioTrack.MODE_STREAM);
+      if(track.getState() == AudioTrack.STATE_INITIALIZED) {
+        // if the audio tracker was initialized successfully then
+        // start playing and return
+        track.play();
+        return;
       }
-      return;
     }
-    track.play();
+    listener.onError(new Exception("Cannot initialize audio track"));
+    track = null;
+    return;
   }
 
   // the following are all static and synchronized to make sure that we never
   // use ffmpeg
   // from more than one thread
-  private static synchronized native AACInfo initNative(AACPlayer player,
-      byte[] buffer, int length);
+  private static synchronized native AACInfo initNative(AACPlayer player, byte[] buffer, int length);
 
-  private static synchronized native DecodingInfo decodeNative(
-    AACPlayer player, byte[] buffer, int length);
+  private static synchronized native DecodingInfo decodeNative(AACPlayer player, byte[] buffer, int length);
 
   private static synchronized native void releaseNative(AACPlayer player);
 }
